@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% block body %}
+<h1>{{ c.canteen_name }}</h1><p class="muted">{{ c.location }}. Open {{ c.opening_time|hm }} to {{ c.closing_time|hm }}</p>
+<form class="row card" method="get">
+ <input name="q" value="{{ s }}" placeholder="Search food" aria-label="Search food">
+ <select name="cat" aria-label="Category"><option value="">All categories</option>{% for k in cats %}<option value="{{ k.category_id }}" {{ 'selected' if cat == k.category_id }}>{{ k.category_name }}</option>{% endfor %}</select>
+ <label class="row"><input type="checkbox" name="veg" value="1" {{ 'checked' if veg }}> Veg only</label>
+ <button>Filter</button><a class="btn ghost" href="{{ url_for('menu', cid=c.canteen_id) }}">Clear</a>
+</form>
+<div class="grid">{% for f in foods %}
+<div class="card img {{ '' if f.is_available else 'off' }}">
+ {% if f.image_url %}<img src="{{ f.image_url }}" alt="{{ f.food_name }}" loading="lazy">{% else %}<div class="ph"><i data-lucide="utensils-crossed"></i></div>{% endif %}
+ <div><div class="between"><b>{{ f.food_name }}</b><span class="{{ 'veg' if f.is_vegetarian else 'nonveg' }}" title="{{ 'Vegetarian' if f.is_vegetarian else 'Non-vegetarian' }}"></span></div>
+ <p class="muted">{{ f.description or '' }}</p>
+ <p class="muted">{{ f.category_name }}. About {{ f.preparation_time }} min</p>
+ <div class="between"><b>₹{{ f.price }}</b>
+ {% if not f.is_available %}<span class="pill">Sold out</span>
+ {% elif is_student %}<form method="post" action="{{ url_for('cart_add') }}"><input type="hidden" name="food_id" value="{{ f.food_id }}"><button class="sm">Add to cart</button></form>
+ {% else %}<a class="btn sm" href="{{ url_for('login', as_='student') }}">Log in to order</a>{% endif %}</div></div></div>
+{% else %}<p class="muted">No items match. Try clearing the filters.</p>{% endfor %}</div>
+<h2 style="margin-top:32px">Recent reviews</h2>
+{% for r in reviews %}<div class="card"><b>{{ r.full_name }}</b> <span class="muted">{{ r.rating }}/5 on {{ r.review_date.strftime('%d %b %Y') }}</span><p>{{ r.comment or '' }}</p></div>
+{% else %}<p class="muted">No reviews yet. Complete an order to leave the first one.</p>{% endfor %}
+{% endblock %}

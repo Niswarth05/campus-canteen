@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block body %}<h1>Checkout: {{ canteen.canteen_name }}</h1>
+<div class="card">{% for i in cart['items'] %}<div class="tot"><span>{{ i.quantity }} x {{ i.food_name }}</span><span>₹{{ i.line }}</span></div>{% endfor %}
+<div class="tot"><span>Subtotal</span><span>₹{{ sub }}</span></div>
+{% if disc > 0 %}<div class="tot"><span>Discount</span><span>-₹{{ disc }}</span></div>{% endif %}
+<div class="tot"><span>GST (5%)</span><span>₹{{ tax }}</span></div><div class="tot big"><span>Total</span><span>₹{{ total }}</span></div></div>
+<form method="post" class="form card">
+ <label>Coupon code<span class="row"><input name="coupon" value="{{ code }}" placeholder="e.g. WELCOME10"><button class="ghost" name="action" value="apply">Apply</button></span></label>
+ <label>Pickup time<select name="pickup" required>{% for s in slots %}<option value="{{ s.isoformat() }}">{{ s.strftime('%I:%M %p') }}</option>{% else %}<option value="">No slots left today</option>{% endfor %}</select></label>
+ <label>Payment method<select name="method">{% for m in methods %}<option value="{{ m }}">{{ 'Cash at pickup' if m == 'cash' else m|replace('_', ' ')|title }}</option>{% endfor %}</select></label>
+ <label>Special instructions<textarea name="notes" maxlength="500" rows="2"></textarea></label>
+ <button name="action" value="place">Place order</button>
+</form>{% endblock %}

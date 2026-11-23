@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% block body %}<h1>Profile</h1>
+<form method="post" class="form card"><label>Full name<input name="full_name" value="{{ u.full_name }}" required></label>
+<label>Email<input value="{{ u.email }}" disabled></label><label>Phone<input name="phone" value="{{ u.phone or '' }}" maxlength="15"></label>
+<label>Current password (only to change it)<input type="password" name="old_password"></label><label>New password<input type="password" name="new_password" minlength="6"></label>
+<button>Save changes</button></form>{% endblock %}

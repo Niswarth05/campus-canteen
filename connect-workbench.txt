@@ -1,0 +1,250 @@
+==============================================================
+ CAMPUSBITE - HOW TO CONNECT MYSQL WORKBENCH TO THE DATABASE
+ See the tables, run queries, add and edit data
+==============================================================
+
+Your database is MySQL 8 running inside a Docker container named
+"canteen-mysql". It is published on port 3307 of your computer
+(port 3306 is left free for any MySQL/MariaDB already installed).
+
+CONNECTION DETAILS
+  Hostname : 127.0.0.1
+  Port     : 3307
+  Username : root
+  Password : the DB_PASS value in your .env file
+             (the default in .env.example is Root@123)
+  Database : CampusCanteenDB
+
+Workbench is only a viewer. The website does not need Workbench
+to run, and you can leave Workbench open while using the site.
+
+
+--------------------------------------------------------------
+ STEP 1: START THE DATABASE
+--------------------------------------------------------------
+1. Open a terminal in the project folder.
+
+2. Check the container:
+
+      sudo docker ps
+
+   You should see "canteen-mysql" with status "Up".
+
+3. If it is missing or stopped, start it:
+
+      make db-up DOCKER="sudo docker"
+
+   (or:  sudo docker start canteen-mysql)
+   Wait about 10 seconds for MySQL to finish starting.
+
+4. If CampusCanteenDB does not exist yet (first time only):
+
+      make db DOCKER="sudo docker"
+
+   WARNING: "make db" deletes and recreates the database and
+   loads the demo data. Do not run it when you want to keep data.
+
+
+--------------------------------------------------------------
+ STEP 2: CREATE THE CONNECTION IN WORKBENCH (one time)
+--------------------------------------------------------------
+1. Open MySQL Workbench.
+
+2. On the Home screen, next to "MySQL Connections", click the
+   "+" icon. The "Setup New Connection" window opens.
+
+3. Fill in:
+      Connection Name   : CampusBite
+      Connection Method : Standard (TCP/IP)
+      Hostname          : 127.0.0.1
+      Port              : 3307
+      Username          : root
+      Default Schema    : CampusCanteenDB   (optional, saves a step)
+
+4. Click "Store in Vault..." (next to Password), type your
+   DB_PASS value, click OK.
+
+5. Click "Test Connection".
+   - "Successfully made the MySQL connection" = it works.
+   - A warning about the server version or SSL: click
+     "Continue Anyway".
+
+6. Click OK. A tile named "CampusBite" appears on the Home screen.
+
+7. Double-click the tile to open the connection.
+
+
+--------------------------------------------------------------
+ STEP 3: FIND THE TABLES
+--------------------------------------------------------------
+1. Left side, "Schemas" tab. Click the refresh icon (two
+   circular arrows) at the top of that panel.
+
+2. Expand "campuscanteendb". Double-click its name once so it
+   turns bold. That makes it the active database.
+
+3. Expand "Tables". You should see 13 tables:
+      users, canteens, categories, food_items, cart, cart_items,
+      orders, order_items, payments, coupons, order_coupons,
+      reviews, order_status_history
+   Expand "Views" to see 2 more:
+      v_order_summary, v_canteen_ratings
+
+
+--------------------------------------------------------------
+ STEP 4: LOOK AT THE DATA
+--------------------------------------------------------------
+Option A: hover over a table (for example "orders") and click the
+          small grid icon on the right. The rows open in a grid.
+
+Option B: right-click the table > "Select Rows - Limit 1000".
+
+To see columns, keys and indexes: right-click the table >
+"Table Inspector".
+
+
+--------------------------------------------------------------
+ STEP 5: RUN YOUR OWN QUERIES
+--------------------------------------------------------------
+1. Open a query tab: File > New Query Tab (Ctrl+T).
+
+2. First line, run it once:
+
+      USE CampusCanteenDB;
+
+3. Type a query, then:
+      Ctrl+Enter          runs the statement the cursor is on
+      lightning bolt      runs everything in the tab
+      lightning + cursor  runs only the selected text
+
+4. Results show in the "Result Grid" at the bottom. Errors show
+   in the "Output" panel under it.
+
+Every statement must end with a semicolon ;
+
+Starter queries:
+
+  -- Users (passwords are hashed, that is normal)
+  SELECT user_id, full_name, email, role FROM Users;
+
+  -- Menu with canteen name
+  SELECT c.canteen_name, f.food_name, f.price, f.is_available
+  FROM Food_Items f JOIN Canteens c ON c.canteen_id = f.canteen_id
+  ORDER BY c.canteen_name, f.food_name;
+
+  -- Latest orders
+  SELECT order_token, student, canteen_name, order_status, total_amount
+  FROM v_order_summary ORDER BY order_id DESC LIMIT 20;
+
+  -- Status history of the newest order
+  SELECT * FROM Order_Status_History
+  WHERE order_id = (SELECT MAX(order_id) FROM Orders)
+  ORDER BY changed_at;
+
+  -- Rating of every canteen
+  SELECT * FROM v_canteen_ratings ORDER BY avg_rating DESC;
+
+
+--------------------------------------------------------------
+ STEP 6: RUN THE READY-MADE QUERY FILE (queries.sql)
+--------------------------------------------------------------
+queries.sql in the project folder has 17 queries (joins, GROUP BY,
+HAVING, subqueries, views) and a few insert/update/delete examples.
+
+1. File > Open SQL Script... and pick queries.sql.
+2. Click inside one query and press Ctrl+Enter to run just that
+   query. The lightning bolt runs all of them (each result opens
+   in its own tab).
+3. The last three statements (DML examples) change data. Skip
+   them if you do not want that.
+
+
+--------------------------------------------------------------
+ STEP 7: ADD, CHANGE AND DELETE DATA
+--------------------------------------------------------------
+With SQL:
+
+  INSERT INTO Categories (category_name, description)
+  VALUES ('Combos 2', 'More meal combos');
+
+  UPDATE Food_Items SET price = 35 WHERE food_name = 'Samosa (2 pcs)';
+
+  UPDATE Food_Items SET is_available = 0 WHERE food_id = 3;
+
+  DELETE FROM Categories WHERE category_name = 'Combos 2';
+
+Rules:
+  * Always write WHERE with UPDATE and DELETE, or every row changes.
+  * Rows used by orders cannot be deleted (foreign keys protect
+    them). That is expected.
+  * Error 1175 (safe update mode): put the primary key in WHERE,
+    for example WHERE food_id = 3, or switch it off under
+    Edit > Preferences > SQL Editor > "Safe Updates", then
+    reconnect.
+
+With the grid (no SQL):
+  1. Open a table with "Select Rows".
+  2. Double-click a cell and type the new value.
+  3. Click "Apply" (bottom right), check the script, Apply again,
+     then Finish.
+  Do not edit password_hash by hand. Create users from the
+  website's Register page.
+
+
+--------------------------------------------------------------
+ STEP 8: WATCH THE WEBSITE AND DATABASE TOGETHER
+--------------------------------------------------------------
+1. Run the site:  make run   and open http://127.0.0.1:5000
+2. Log in as the student (student@campus.edu / student123) and
+   place an order at Main Canteen.
+3. In Workbench run:
+
+      SELECT * FROM Orders ORDER BY order_id DESC LIMIT 5;
+      SELECT * FROM Order_Items ORDER BY order_item_id DESC LIMIT 5;
+      SELECT * FROM Payments ORDER BY payment_id DESC LIMIT 5;
+
+   The new rows are there. Workbench does not refresh by itself:
+   run the query again to see newer data.
+4. Change a price in Workbench (Step 7), then look at the
+   canteen menu in the browser. It updates on its own within
+   a few seconds.
+
+
+--------------------------------------------------------------
+ TROUBLESHOOTING
+--------------------------------------------------------------
+"Can't connect to MySQL server on '127.0.0.1:3307'"
+  - The container is not running: make db-up DOCKER="sudo docker"
+    and wait 10 seconds. Check the port is 3307, not 3306.
+
+"Access denied for user 'root'"
+  - Wrong password. Use the DB_PASS value in your .env file and
+    store it again with "Store in Vault".
+
+"campuscanteendb" is not listed
+  - Click the refresh icon in the Schemas panel. If it is still
+    missing, run: make db DOCKER="sudo docker"
+
+Error 1046 "No database selected"
+  - Run USE CampusCanteenDB; or double-click the schema so its
+    name is bold.
+
+Error 1146 "Table doesn't exist"
+  - Table names are case sensitive on Linux. Write them as in
+    schema.sql: Users, Food_Items, Order_Items, and so on.
+
+Workbench says the server version is not supported
+  - Click "Continue Anyway". MySQL 8.0 works.
+
+Port 3307 already in use
+  - Another container or service uses it. Stop it, or change
+    DB_PORT in .env, remove the old container
+    (sudo docker rm -f canteen-mysql) and run make db-up again.
+
+Useful terminal commands
+  sudo docker ps                       is the database running?
+  sudo docker start canteen-mysql      start it
+  sudo docker stop canteen-mysql       stop it
+  sudo docker logs canteen-mysql       server messages
+  make db-shell DOCKER="sudo docker"   open a mysql prompt
+==============================================================

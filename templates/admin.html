@@ -1,0 +1,62 @@
+{% extends "base.html" %}{% block body %}
+{% set tabs = [('dashboard','Dashboard'),('orders','Orders'),('foods','Food items'),('categories','Categories'),('coupons','Coupons'),('payments','Payments'),('reviews','Reviews')] %}
+<div class="layout"><aside class="side"><p class="muted">{{ canteen.canteen_name }}</p>{% for k, n in tabs %}<a href="{{ url_for('admin', tab=k) }}" class="{{ 'on' if tab == k }}">{{ n }}</a>{% endfor %}</aside>
+<section>
+{% if tab == 'dashboard' %}<h1>Dashboard</h1>
+{% if not daily and not top %}<p class="muted">No orders for {{ canteen.canteen_name }} yet. Each admin only sees orders placed at their own canteen.</p>{% endif %}
+<div class="stats"><div class="card"><span class="muted">Orders today</span><b>{{ today.orders }}</b></div><div class="card"><span class="muted">Sales today</span><b>₹{{ today.revenue }}</b></div>
+<div class="card"><span class="muted">Waiting for you</span><b>{{ today.pending }}</b></div><div class="card"><span class="muted">Rating</span><b>{{ rating.a or '-' }}</b><span class="muted">{{ rating.n }} reviews</span></div></div>
+<h2>Sales, last 7 days</h2><div class="card">{% set mx = (daily|map(attribute='revenue')|map('float')|max) if daily else 1 %}
+{% for r in daily %}<div class="row" style="flex-wrap:nowrap"><span style="width:70px">{{ r.d.strftime('%d %b') }}</span><div style="flex:1"><div class="bar" style="width:{{ (r.revenue|float / mx * 100)|round }}%"></div></div><span style="width:140px;text-align:right">₹{{ r.revenue }} ({{ r.orders }})</span></div>{% else %}<p class="muted">No sales yet.</p>{% endfor %}</div>
+<h2>Top sellers</h2><div class="scroll"><table><tr><th>Item</th><th>Sold</th><th>Revenue</th></tr>{% for t in top %}<tr><td>{{ t.food_name }}</td><td>{{ t.qty }}</td><td>₹{{ t.rev }}</td></tr>{% else %}<tr><td colspan="3" class="muted">Nothing sold yet.</td></tr>{% endfor %}</table></div>
+
+{% elif tab == 'orders' %}<h1>Orders</h1>
+{% set labels = {'accepted':'Accept','cancelled':'Reject','preparing':'Start preparing','ready':'Mark ready','completed':'Complete'} %}
+{% for o in orders %}<div class="card"><div class="between"><div><b>{{ o.order_token }}</b> <span class="muted">{{ o.full_name }}{% if o.phone %}, {{ o.phone }}{% endif %}</span></div><span class="pill {{ o.order_status }}">{{ o.order_status|title }}</span></div>
+<p class="muted">Pickup {{ o.pickup_time.strftime('%d %b, %I:%M %p') if o.pickup_time else '-' }}. {{ (o.payment_method or '')|replace('_',' ') }}: <span class="pill {{ o.payment_status }}">{{ o.payment_status }}</span></p>
+{% for i in o['items'] %}<div class="tot"><span>{{ i.quantity }} x {{ i.food_name }}</span><span>₹{{ i.item_total }}</span></div>{% endfor %}
+{% if o.special_instructions %}<p><b>Note:</b> {{ o.special_instructions }}</p>{% endif %}
+<div class="tot big"><span>Total</span><span>₹{{ o.total_amount }}</span></div>
+<div class="row" style="margin-top:8px">{% for s in next.get(o.order_status, []) %}<form method="post" action="{{ url_for('admin_status', oid=o.order_id) }}"><input type="hidden" name="status" value="{{ s }}"><button class="sm {{ 'danger' if s == 'cancelled' }}">{{ labels[s] }}</button></form>{% endfor %}</div></div>
+{% else %}<p class="muted">No orders yet.</p>{% endfor %}
+
+{% elif tab == 'foods' %}<h1>Food items</h1>
+<form method="post" action="{{ url_for('food_save') }}" class="form card" enctype="multipart/form-data"><h3>{{ 'Edit item' if edit else 'Add item' }}</h3>
+{% if edit %}<input type="hidden" name="food_id" value="{{ edit.food_id }}">{% endif %}
+<label>Name<input name="food_name" value="{{ edit.food_name if edit }}" required></label>
+<label>Category<select name="category_id">{% for k in cats %}<option value="{{ k.category_id }}" {{ 'selected' if edit and edit.category_id == k.category_id }}>{{ k.category_name }}</option>{% endfor %}</select></label>
+<label>Description<input name="description" value="{{ edit.description or '' if edit }}"></label>
+<label>Image URL<input name="image_url" value="{{ edit.image_url or '' if edit }}" placeholder="https://..."></label>
+<label>Or upload image<input type="file" name="image" accept="image/*"></label>
+<div class="row"><label>Price (₹)<input type="number" step="0.01" min="0" name="price" value="{{ edit.price if edit }}" required></label><label>Prep minutes<input type="number" min="0" name="preparation_time" value="{{ edit.preparation_time if edit else 10 }}"></label></div>
+<label class="row"><input type="checkbox" name="is_vegetarian" {{ 'checked' if not edit or edit.is_vegetarian }}> Vegetarian</label>
+<div class="row"><button>Save item</button>{% if edit %}<a class="btn ghost" href="{{ url_for('admin', tab='foods') }}">Cancel</a>{% endif %}</div></form>
+<div class="scroll"><table><tr><th>Item</th><th>Category</th><th>Price</th><th>Status</th><th></th></tr>
+{% for f in foods %}<tr><td>{{ f.food_name }}</td><td>{{ f.category_name }}</td><td>₹{{ f.price }}</td><td><span class="pill {{ 'ready' if f.is_available else 'cancelled' }}">{{ 'Available' if f.is_available else 'Sold out' }}</span></td>
+<td class="row"><a class="btn ghost sm" href="{{ url_for('admin', tab='foods', edit=f.food_id) }}">Edit</a>
+<form method="post" action="{{ url_for('food_act', fid=f.food_id, act='toggle') }}"><button class="ghost sm">{{ 'Mark sold out' if f.is_available else 'Mark available' }}</button></form>
+<form method="post" action="{{ url_for('food_act', fid=f.food_id, act='delete') }}" onsubmit="return confirm('Delete this item?')"><button class="danger sm">Delete</button></form></td></tr>{% endfor %}</table></div>
+
+{% elif tab == 'categories' %}<h1>Categories</h1>
+<form method="post" action="{{ url_for('cat_add') }}" class="row card"><input name="name" placeholder="Category name" required><input name="description" placeholder="Description (optional)"><button>Add category</button></form>
+<table><tr><th>Name</th><th>Items</th><th></th></tr>{% for k in cats %}<tr><td>{{ k.category_name }}</td><td>{{ k.n }}</td><td><form method="post" action="{{ url_for('cat_delete', kid=k.category_id) }}" onsubmit="return confirm('Delete this category?')"><button class="danger sm">Delete</button></form></td></tr>{% endfor %}</table>
+
+{% elif tab == 'coupons' %}<h1>Coupons</h1><p class="muted">Coupons apply to every canteen.</p>
+<form method="post" action="{{ url_for('coupon_add') }}" class="form card"><div class="row"><label>Code<input name="code" required></label>
+<label>Type<select name="type"><option value="percentage">Percentage</option><option value="fixed">Fixed amount</option></select></label><label>Value<input type="number" step="0.01" min="0.01" name="value" required></label></div>
+<div class="row"><label>Minimum order<input type="number" step="0.01" min="0" name="min"></label><label>Max discount<input type="number" step="0.01" min="0" name="max"></label></div>
+<div class="row"><label>Total uses<input type="number" min="1" name="limit"></label><label>Uses per student<input type="number" min="1" name="per_user" value="1"></label></div>
+<div class="row"><label>Valid from<input type="datetime-local" name="from" required></label><label>Valid until<input type="datetime-local" name="until" required></label></div><button>Create coupon</button></form>
+<div class="scroll"><table><tr><th>Code</th><th>Discount</th><th>Min order</th><th>Used</th><th>Valid until</th><th></th></tr>
+{% for c in coupons %}<tr><td><b>{{ c.coupon_code }}</b></td><td>{{ c.discount_value|round|int }}{{ '%' if c.discount_type == 'percentage' else ' off' }}</td><td>₹{{ c.minimum_order_amount }}</td><td>{{ c.used }}{{ '/' ~ c.usage_limit if c.usage_limit }}</td><td>{{ c.valid_until.strftime('%d %b %Y') }}</td>
+<td><form method="post" action="{{ url_for('coupon_toggle', cid=c.coupon_id) }}"><button class="ghost sm">{{ 'Disable' if c.is_active else 'Enable' }}</button></form></td></tr>{% endfor %}</table></div>
+
+{% elif tab == 'payments' %}<h1>Payments</h1>
+<div class="scroll"><table><tr><th>Order</th><th>Student</th><th>Method</th><th>Amount</th><th>Status</th><th>Date</th></tr>
+{% for p in payments %}<tr><td>{{ p.order_token }}</td><td>{{ p.full_name }}</td><td>{{ p.payment_method|replace('_',' ') }}</td><td>₹{{ p.amount }}</td><td><span class="pill {{ p.payment_status }}">{{ p.payment_status }}</span></td><td>{{ p.payment_date.strftime('%d %b, %I:%M %p') }}</td></tr>
+{% else %}<tr><td colspan="6" class="muted">No payments yet.</td></tr>{% endfor %}</table></div>
+
+{% elif tab == 'reviews' %}<h1>Customer reviews</h1>
+{% for r in reviews %}<div class="card"><b>{{ r.full_name }}</b> <span class="muted">{{ r.rating }}/5, order {{ r.order_token }}, {{ r.review_date.strftime('%d %b %Y') }}</span><p>{{ r.comment or 'No comment.' }}</p></div>{% else %}<p class="muted">No reviews yet.</p>{% endfor %}
+{% endif %}
+</section></div>{% endblock %}

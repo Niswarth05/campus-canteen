@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block body %}<h1>Your cart</h1>
+{% for c in carts %}<div class="card"><div class="between"><h3>{{ c.canteen_name }}</h3><a class="btn" href="{{ url_for('checkout', cart_id=c.cart_id) }}">Checkout</a></div>
+<div class="scroll"><table>{% for i in c['items'] %}<tr><td>{{ i.food_name }}{% if not i.is_available %} <span class="pill cancelled">Sold out</span>{% endif %}</td><td>₹{{ i.price }}</td>
+<td><form method="post" action="{{ url_for('cart_update') }}" class="row"><input type="hidden" name="item_id" value="{{ i.cart_item_id }}">
+<button class="ghost sm" name="delta" value="-1" aria-label="Decrease">-</button><b>{{ i.quantity }}</b><button class="ghost sm" name="delta" value="1" aria-label="Increase">+</button></form></td><td>₹{{ i.line }}</td></tr>{% endfor %}</table></div>
+<div class="tot big"><span>Subtotal</span><span>₹{{ c.subtotal }}</span></div></div>
+{% else %}<p class="muted">Your cart is empty. <a href="{{ url_for('home') }}"><u>Browse canteens</u></a></p>{% endfor %}{% endblock %}

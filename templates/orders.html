@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block body %}<h1>My orders</h1>
+{% set steps = ['placed', 'accepted', 'preparing', 'ready', 'completed'] %}
+{% for o in orders %}<div class="card"><div class="between"><div><b>{{ o.order_token }}</b> <span class="muted">{{ o.canteen_name }}</span></div><span class="pill {{ o.order_status }}">{{ o.order_status|title }}</span></div>
+<p class="muted">Ordered {{ o.order_date.strftime('%d %b, %I:%M %p') }}. Pickup {{ o.pickup_time.strftime('%d %b, %I:%M %p') if o.pickup_time else '-' }}</p>
+{% if o.order_status != 'cancelled' %}<div class="steps">{% for s in steps %}<span class="{{ 'done' if loop.index0 <= steps.index(o.order_status) }}">{{ s|title }}</span>{% endfor %}</div>{% endif %}
+{% for i in o['items'] %}<div class="tot"><span>{{ i.quantity }} x {{ i.food_name }}</span><span>₹{{ i.item_total }}</span></div>{% endfor %}
+<div class="tot big"><span>Total {% if o.discount_amount > 0 %}<span class="muted">(saved ₹{{ o.discount_amount }})</span>{% endif %}</span><span>₹{{ o.total_amount }}</span></div>
+<p class="muted">Payment: {{ (o.payment_method or '')|replace('_', ' ') }} <span class="pill {{ o.payment_status }}">{{ o.payment_status }}</span></p>
+{% if o.order_status == 'placed' %}<form method="post" action="{{ url_for('cancel_order', oid=o.order_id) }}"><button class="danger sm">Cancel order</button></form>{% endif %}
+{% if o.order_status == 'completed' %}<form method="post" action="{{ url_for('review', oid=o.order_id) }}" class="row">
+ <select name="rating" aria-label="Rating">{% for n in [5,4,3,2,1] %}<option value="{{ n }}" {{ 'selected' if o.rating == n }}>{{ n }} star{{ 's' if n > 1 }}</option>{% endfor %}</select>
+ <input name="comment" placeholder="Tell others how it was" style="flex:1"><button class="sm">{{ 'Update review' if o.rating else 'Post review' }}</button></form>{% endif %}
+</div>{% else %}<p class="muted">No orders yet. <a href="{{ url_for('home') }}"><u>Pick a canteen</u></a></p>{% endfor %}{% endblock %}

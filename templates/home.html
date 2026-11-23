@@ -1,0 +1,10 @@
+{% extends "base.html" %}{% block body %}
+<section class="hero"><h1>Order ahead. Skip the queue.</h1><p class="muted">Pick a canteen, choose a pickup time, and collect your food when it is ready.</p></section>
+<div class="grid">{% for c in canteens %}
+<a class="card" href="{{ url_for('menu', cid=c.canteen_id) }}">
+ <h3>{{ c.canteen_name }}</h3>
+ <p class="muted"><i data-lucide="map-pin"></i> {{ c.location }}</p>
+ <p class="muted"><i data-lucide="clock"></i> {{ c.opening_time|hm }} to {{ c.closing_time|hm }}</p>
+ <p><i data-lucide="star"></i> {% if c.avg_rating %}<b>{{ c.avg_rating }}</b> <span class="muted">({{ c.reviews }} reviews)</span>{% else %}<span class="muted">No reviews yet</span>{% endif %}</p>
+</a>{% else %}<p class="muted">No canteens are open yet.</p>{% endfor %}</div>
+{% endblock %}

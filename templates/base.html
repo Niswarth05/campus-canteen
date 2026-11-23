@@ -1,0 +1,37 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}CampusBite{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script></head><body>
+<header class="nav"><a class="logo" href="{{ url_for('home') }}"><i data-lucide="utensils"></i> CampusBite{% if live_scope %}<span class="live" title="Live updates on"></span>{% endif %}</a>
+<nav>
+{% if is_admin %}<a href="{{ url_for('admin') }}">Dashboard</a>{% endif %}
+{% if is_student %}<a href="{{ url_for('home') }}">Canteens</a><a href="{{ url_for('orders') }}">My orders</a>
+<a href="{{ url_for('cart') }}"><i data-lucide="shopping-cart"></i> Cart{% if cart_count %} <span class="badge">{{ cart_count }}</span>{% endif %}</a>
+<a href="{{ url_for('profile') }}">Profile</a>{% endif %}
+{% if is_admin and is_student %}<a href="{{ url_for('logout', role='student') }}" title="Signed in as {{ student_name }}">Log out student</a><a href="{{ url_for('logout', role='admin') }}" title="Signed in as {{ admin_name }}">Log out admin</a>
+{% elif is_admin %}<a href="{{ url_for('logout', role='admin') }}">Log out</a>
+{% elif is_student %}<a href="{{ url_for('logout', role='student') }}">Log out</a>
+{% else %}<a href="{{ url_for('login') }}">Student login</a><a href="{{ url_for('login', as_='admin') }}">Admin login</a><a class="btn" href="{{ url_for('register') }}">Register</a>{% endif %}
+</nav></header>
+<main>{% for c, m in get_flashed_messages(with_categories=true) %}<div class="flash {{ c }}">{{ m }}</div>{% endfor %}
+{% block body %}{% endblock %}</main>
+{% if live_scope %}<script>
+(function () {
+  let last = null, pending = false;
+  const y = sessionStorage.getItem("liveScrollY");
+  if (y !== null) { sessionStorage.removeItem("liveScrollY"); window.scrollTo(0, +y); }
+  const es = new EventSource("{{ url_for('stream') }}?scope={{ live_scope }}");
+  function busy() {   // focused field, or text typed but not sent yet
+    if (["INPUT", "TEXTAREA", "SELECT"].includes((document.activeElement || {}).tagName || "")) return true;
+    return [...document.querySelectorAll("main input:not([type=hidden]):not([type=checkbox]), main textarea")]
+      .some(e => e.value && e.value !== e.defaultValue);
+  }
+  function reload() { sessionStorage.setItem("liveScrollY", window.scrollY); location.reload(); }
+  function refresh() { if (busy()) { pending = true; return; } reload(); }
+  es.onmessage = function (e) {
+    try { const rev = JSON.parse(e.data).rev; if (last !== null && rev !== last) refresh(); last = rev; } catch (_) {}
+  };
+  document.addEventListener("focusout", function () { if (pending && !busy()) { pending = false; reload(); } });
+})();
+</script>{% endif %}
+<script>lucide.createIcons()</script></body></html>
