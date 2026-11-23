@@ -33,7 +33,7 @@ A campus canteen food booking and management website. Students browse canteens, 
 Requirements: Python 3.10+, `make`, and Docker (or your own MySQL 8 server).
 
 ```bash
-git clone <your-repo-url> && cd campus-canteen
+git clone https://github.com/Niswarth05/campus-canteen.git && cd campus-canteen
 make setup     # creates .env and .venv, starts MySQL 8 in Docker, loads demo data
 make run       # http://127.0.0.1:5000
 ```
